@@ -48,15 +48,14 @@ class TestMqttHandler(TestCase):
         """Flushing should publish messages to MQTT topic"""
         self.handler.flush_level = logging.ERROR
 
-        async def do_test(handler, logger):
+        async def do_test(logger):
             logger.info("Test message 1")
             await asyncio.sleep(0.1)
             logger.error("Test message 2")
             await asyncio.sleep(0.1)
-            handler.stop()
 
         async def main(handler, logger):
-            await asyncio.gather(handler.run(), do_test(handler, logger))
+            await asyncio.gather(handler.run(), do_test(logger))
 
         asyncio.run(main(self.handler, self.logger))
 
@@ -68,7 +67,7 @@ class TestMqttHandler(TestCase):
         """Flushing multiple times should publish separate messages"""
         self.handler.capacity = 2
 
-        async def do_test(handler, logger):
+        async def do_test(logger):
             logger.info("Test message 1")
             await asyncio.sleep(0.1)
             logger.info("Test message 2")
@@ -77,10 +76,9 @@ class TestMqttHandler(TestCase):
             await asyncio.sleep(0.1)
             logger.info("Test message 4")
             await asyncio.sleep(0.1)
-            handler.stop()
 
         async def main(handler, logger):
-            await asyncio.gather(handler.run(), do_test(handler, logger))
+            await asyncio.gather(handler.run(), do_test(logger))
 
         asyncio.run(main(self.handler, self.logger))
 

@@ -37,21 +37,15 @@ class MqttHandler(logging.Handler):
         self.capacity = capacity
         self.buffer = []
         self.will_flush = asyncio.Event()
-        self.active = True
 
     async def run(self):
         """
         Continuously publish log records via MQTT.
         This method should be scheduled as an asyncio task.
         """
-        self.active = True
-        while self.active:
+        while True:
             await self.will_flush.wait()
             await self._flush()
-
-    def stop(self):
-        """Stop the handler from processing further log records."""
-        self.active = False
 
     # Check if we should publish an MQTT message
     def _should_flush(self, record):
