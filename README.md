@@ -89,7 +89,7 @@ ruff check
 Before running tests, install the test dependencies:
 
 ```bash
-cat test-requirements.txt | grep -v "^$" | xargs -n 1 micropython -m mip install
+./bin/setup
 ```
 
 Then, you can run the tests using the micropython version of `unittest`:
@@ -100,13 +100,7 @@ micropython -m unittest
 
 ## Releasing
 
-To release a new version, first cross-compile to micropython bytecode. You need `mpy-cross` in your `PATH`:
-
-```bash
-mpy-cross thermostat/__init__.py
-```
-
-Then, update the versions in `manifest.py` and `package.json`. Commit your changes and make a pull request. After merging, create a new tag and push to GitHub:
+To release a new version, update the versions in `manifest.py` and `package.json`. Commit your changes and make a pull request. After merging, create a new tag and push to GitHub:
 
 ```bash
 git tag vX.Y.Z
