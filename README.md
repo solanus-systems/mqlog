@@ -43,6 +43,7 @@ client = ...
 logger = logging.getLogger("my_logger")
 logger.setLevel(logging.INFO)
 handler = MqttHandler(client, "my_topic")
+handler.setFormatter(logging.Formatter("%(message)s"))
 logger.addHandler(handler)
 ```
 
