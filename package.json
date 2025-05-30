@@ -1,9 +1,9 @@
 {
   "urls": [
-    ["mqlog/__init__.mpy", "github:solanus-systems/mqlog/mqlog/__init__.mpy"]
+    ["mqlog/__init__.py", "github:solanus-systems/mqlog/mqlog/__init__.py"]
   ],
   "deps": [
     ["logging", "latest"]
   ],
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

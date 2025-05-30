@@ -89,7 +89,7 @@ ruff check
 Before running tests, install the test dependencies:
 
 ```bash
-cat test-requirements.txt | grep -v "^$" | xargs -n 1 micropython -m mip install
+./bin/setup
 ```
 
 Then, you can run the tests using the micropython version of `unittest`:

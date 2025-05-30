@@ -1,6 +1,6 @@
 metadata(
   description="Async logging over MQTT for micropython",
-  version="0.1.0"
+  version="0.1.1"
 )
 
 require("logging")
