@@ -37,28 +37,39 @@ class MqttHandler(logging.Handler):
         self.capacity = capacity
         self.buffer = []
         self.will_flush = asyncio.Event()
+        self.active = True
 
-    def should_flush(self, record):
+    async def run(self):
+        """
+        Continuously publish log records via MQTT.
+        This method should be scheduled as an asyncio task.
+        """
+        self.active = True
+        while self.active:
+            await self.will_flush.wait()
+            await self._flush()
+
+    def stop(self):
+        """Stop the handler from processing further log records."""
+        self.active = False
+
+    # Check if we should publish an MQTT message
+    def _should_flush(self, record):
         return (len(self.buffer) >= self.capacity) or (
             record.levelno >= self.flush_level
         )
 
-    # Called when the logger logs a message
+    # Called by logging.Handler when the logger logs a message
     def emit(self, record):
-        self.buffer.append(record)
-        if self.should_flush(record):
+        self.buffer.append(self.format(record))
+        if self._should_flush(record):
             self.will_flush.set()
-
-    # Needs to be run in an event loop once MQTT client is connected
-    async def run(self):
-        while True:
-            await self.will_flush.wait()
-            await self._flush()
 
     # Named with an underscore to avoid conflict with logging.Handler.flush
     async def _flush(self):
         if self.buffer:
-            records = [self.buffer.pop(0) for _ in range(len(self.buffer))]
-            msg = "\n".join(self.format(record) for record in records)
-            await self.client.publish(self.topic, msg, qos=self.qos)
+            msg = ""
+            while self.buffer:
+                msg += self.buffer.pop(0) + "\n"
+            await self.client.publish(self.topic, msg.strip(), qos=self.qos)
         self.will_flush.clear()
