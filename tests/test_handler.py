@@ -26,6 +26,11 @@ class TestMqttHandler(TestCase):
         self.logger.addHandler(self.handler)
         self.logger.setLevel(logging.INFO)
 
+    def test_default_formatter(self):
+        """Handler should use default formatter if none is set"""
+        self.handler.setFormatter(None)
+        self.logger.info("Test message")  # Would error if no formatter
+
     def test_no_flush(self):
         """Buffer should not be flushed until capacity/level reached"""
         self.handler.flush_level = logging.WARNING

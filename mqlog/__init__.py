@@ -3,6 +3,8 @@
 import asyncio
 import logging
 
+_default_formatter = logging.Formatter(logging._default_fmt)
+
 
 class MqttHandler(logging.Handler):
     """
@@ -58,6 +60,11 @@ class MqttHandler(logging.Handler):
         self.buffer.append(self.format(record))
         if self._should_flush(record):
             self.will_flush.set()
+
+    # Override Handler.format to prevent errors if there's no formatter set
+    def format(self, record):
+        fmt = self.formatter or _default_formatter
+        return fmt.format(record)
 
     # Named with an underscore to avoid conflict with logging.Handler.flush
     async def _flush(self):
