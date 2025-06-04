@@ -14,7 +14,7 @@ class MqttHandler(logging.Handler):
         client,
         topic,
         qos=0,
-        level=logging.INFO,
+        level=logging.NOTSET,
         flush_level=logging.ERROR,
         capacity=10,
     ):
