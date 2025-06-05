@@ -39,6 +39,7 @@ class MqttHandler(logging.Handler):
         self.capacity = capacity
         self.buffer = []
         self.will_flush = asyncio.Event()
+        self._logger = logging.getLogger("mqlog")
 
     async def run(self):
         """
@@ -69,8 +70,10 @@ class MqttHandler(logging.Handler):
     # Named with an underscore to avoid conflict with logging.Handler.flush
     async def _flush(self):
         if self.buffer:
-            msg = ""
-            while self.buffer:
-                msg += self.buffer.pop(0) + "\n"
-            await self.client.publish(self.topic, msg.strip(), qos=self.qos)
-        self.will_flush.clear()
+            try:
+                msg = "\n".join([line for line in self.buffer])
+                await self.client.publish(self.topic, msg, qos=self.qos)
+                self.buffer.clear()
+            except Exception as e:
+                self._logger.error(f"Failed to publish logs via MQTT: {e}")
+            self.will_flush.clear()
