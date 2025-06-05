@@ -70,6 +70,9 @@ class MqttHandler(logging.Handler):
     # Named with an underscore to avoid conflict with logging.Handler.flush
     async def _flush(self):
         if self.buffer:
+            # Try to publish, but if we fail, just log the error – don't
+            # want to cause cascading errors. Something else is responsible
+            # for bringing the connection back up.
             try:
                 msg = "\n".join([line for line in self.buffer])
                 await self.client.publish(self.topic, msg, qos=self.qos)
@@ -77,3 +80,8 @@ class MqttHandler(logging.Handler):
             except Exception as e:
                 self._logger.error(f"Failed to publish logs via MQTT: {e}")
             self.will_flush.clear()
+
+        # If we were supposed to flush but couldn't, truncate the buffer
+        # to prevent it from growing indefinitely
+        if self.buffer and len(self.buffer) >= self.capacity:
+            self.buffer = self.buffer[-self.capacity :]
