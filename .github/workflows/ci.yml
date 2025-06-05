@@ -20,8 +20,6 @@ jobs:
   test:
     name: test
     runs-on: ubuntu-latest
-    env:
-      MICROPYPATH: ".frozen:~/.micropython/lib:/usr/lib/micropython:$(pwd)"
     steps:
       - uses: actions/checkout@v2
       - name: Build micropython
@@ -35,8 +33,10 @@ jobs:
           cd ..
           rm -rf micropython
       - name: Install test dependencies
-        run: cat test-requirements.txt | grep -v "^$" | xargs -n 1 micropython -m mip install
+        run: ./bin/setup
       - name: Install the package
         run: "micropython -m mip install github:${{ github.repository }}@${{ github.ref_name }}"
       - name: Run tests
         run: micropython -m unittest
+        env:
+          MICROPYPATH: "${{ github.workspace }}/tests/mocks:${{ github.workspace }}:.frozen:~/.micropython/lib:/usr/lib/micropython"
