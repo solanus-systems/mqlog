@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import unittest
 from unittest import TestCase
 
 from mqlog import MqttHandler
@@ -9,23 +10,25 @@ from tests.utils import AsyncMock, Mock, call
 class FakeClient:
     """A fake MQTT client for testing purposes."""
 
-    publish: None
+    def __init__(self):
+        self.publish = AsyncMock()
+        self.up = asyncio.Event()
 
 
 class TestMqttHandler(TestCase):
     def setUp(self):
         self.client = FakeClient()
-        self.client.publish = AsyncMock()
         self.handler = MqttHandler(self.client, "test_topic")
-        self.handler.setFormatter(logging.Formatter("%(message)s"))
         self.logger = logging.getLogger("test")
         self.logger.addHandler(self.handler)
         self.logger.setLevel(logging.INFO)
+        self.client.up.set()  # Simulate client being ready
 
     def tearDown(self):
         """Clean up after each test"""
         self.handler.buffer.clear()
         self.handler.will_flush.clear()
+        self.client.up.clear()
 
     def test_default_formatter(self):
         """Handler should use default formatter if none is set"""
@@ -54,7 +57,7 @@ class TestMqttHandler(TestCase):
     def test_flush_fail(self):
         """Flushing should log an error if publish fails"""
         self.handler._logger.error = Mock()
-        self.client.publish = AsyncMock(side_effect=Exception("Publish failed"))
+        self.client.publish.side_effect = Exception("Publish failed")
 
         async def do_test(handler: logging.Handler, logger: logging.Logger):
             asyncio.create_task(handler.run())
@@ -81,7 +84,7 @@ class TestMqttHandler(TestCase):
         asyncio.run(do_test(self.handler, self.logger))
 
         self.client.publish.assert_called_with(
-            "test_topic", "Test message 1\nTest message 2", qos=0
+            "test_topic", "INFO:test:Test message 1\nERROR:test:Test message 2", qos=0
         )
 
     def test_flush_multiple(self):
@@ -104,15 +107,23 @@ class TestMqttHandler(TestCase):
 
         self.client.publish.assert_has_calls(
             [
-                call("test_topic", "Test message 1\nTest message 2", qos=0),
-                call("test_topic", "Test message 3\nTest message 4", qos=0),
+                call(
+                    "test_topic",
+                    "INFO:test:Test message 1\nINFO:test:Test message 2",
+                    qos=0,
+                ),
+                call(
+                    "test_topic",
+                    "INFO:test:Test message 3\nINFO:test:Test message 4",
+                    qos=0,
+                ),
             ]
         )
 
     def test_buffer_overflow(self):
         """Buffer should get truncated if it exceeds capacity"""
         self.handler.capacity = 3
-        self.client.publish = AsyncMock(side_effect=Exception("Publish failed"))
+        self.client.up.clear()  # Simulate client being disconnected
 
         async def do_test(handler: logging.Handler, logger: logging.Logger):
             asyncio.create_task(handler.run())
@@ -129,5 +140,36 @@ class TestMqttHandler(TestCase):
         asyncio.run(do_test(self.handler, self.logger))
 
         self.assertEqual(
-            self.handler.buffer, ["Test message 2", "Test message 3", "Test message 4"]
+            self.handler.buffer,
+            [
+                "INFO:test:Test message 2",
+                "INFO:test:Test message 3",
+                "INFO:test:Test message 4",
+            ],
         )
+
+    def test_reconnect(self):
+        """Handler should reconnect and publish messages after a disconnect"""
+        self.client.up.clear()  # Simulate client being disconnected
+
+        async def do_test(
+            handler: logging.Handler, logger: logging.Logger, client: FakeClient
+        ):
+            asyncio.create_task(handler.run())
+            await asyncio.sleep(0.1)
+            logger.error("Test message 1")
+            await asyncio.sleep(0.1)
+
+            # Simulate reconnect
+            client.up.set()
+            await asyncio.sleep(0.1)
+
+        asyncio.run(do_test(self.handler, self.logger, self.client))
+
+        self.client.publish.assert_called_with(
+            "test_topic", "ERROR:test:Test message 1", qos=0
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
