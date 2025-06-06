@@ -47,6 +47,7 @@ class MqttHandler(logging.Handler):
         This method should be scheduled as an asyncio task.
         """
         while True:
+            await self.client.up.wait()
             await self.will_flush.wait()
             await self._flush()
 
@@ -59,6 +60,11 @@ class MqttHandler(logging.Handler):
     # Called by logging.Handler when the logger logs a message
     def emit(self, record):
         self.buffer.append(self.format(record))
+
+        # Prevent buffer from growing indefinitely
+        if self.buffer and len(self.buffer) > self.capacity:
+            self.buffer = self.buffer[-self.capacity :]
+
         if self._should_flush(record):
             self.will_flush.set()
 
@@ -73,15 +79,11 @@ class MqttHandler(logging.Handler):
             # Try to publish, but if we fail, just log the error – don't
             # want to cause cascading errors. Something else is responsible
             # for bringing the connection back up.
+            msg = "\n".join([line for line in self.buffer])
             try:
-                msg = "\n".join([line for line in self.buffer])
                 await self.client.publish(self.topic, msg, qos=self.qos)
                 self.buffer.clear()
             except Exception as e:
                 self._logger.error(f"Failed to publish logs via MQTT: {e}")
-            self.will_flush.clear()
-
-        # If we were supposed to flush but couldn't, truncate the buffer
-        # to prevent it from growing indefinitely
-        if self.buffer and len(self.buffer) >= self.capacity:
-            self.buffer = self.buffer[-self.capacity :]
+            finally:
+                self.will_flush.clear()
