@@ -30,6 +30,8 @@ async def publish(topic, msg, qos):
     pass # your implementation here
 ```
 
+The client also needs an awaitable `asyncio.Event` called `up` to check whether the connection is functioning. This is used to determine whether the handler should continue buffering messages or attempt to publish them immediately.
+
 Then, you can create a logger and add the handler:
 
 ```python
@@ -54,6 +56,8 @@ import asyncio
 
 async def main():
     await asyncio.create_task(handler.run())
+
+asyncio.run(main())
 ```
 
 The handler will buffer log messages until either its capacity is reached or a log message meeting the `flush_level` is logged. The `flush_level` defaults to `ERROR`, meaning that only `ERROR` or `FATAL` messages will trigger an immediate publish. You can change this behavior by setting the `flush_level` when creating the handler:
